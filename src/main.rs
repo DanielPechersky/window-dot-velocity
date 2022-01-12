@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use bevy::{app::Events, prelude::*};
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
