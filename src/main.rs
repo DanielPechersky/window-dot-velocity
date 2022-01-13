@@ -161,7 +161,7 @@ fn setup(
         ..Default::default()
     });
 
-    for _ in 0..5 {
+    for _ in 0..10 {
         use rand::seq::SliceRandom;
         const COLOURS: &[Color] = &[
             Color::RED,
@@ -171,7 +171,7 @@ fn setup(
             Color::GOLD,
         ];
 
-        let size = rand::random::<Real>() * 0.06 + 0.01;
+        let size = rand::random::<Real>() * 0.03 + 0.01;
 
         enum Choice {
             Circle,
