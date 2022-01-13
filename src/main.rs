@@ -241,6 +241,14 @@ fn setup(
     }
 }
 
+fn window_background_indicates_state(mut background: ResMut<ClearColor>, window: Query<&Window>) {
+    *background = match window.get_single().unwrap() {
+        Window::Bouncing => ClearColor(Color::NAVY),
+        Window::Dragging(_) => ClearColor(Color::DARK_GRAY),
+        Window::Static => ClearColor(Color::GRAY),
+    }
+}
+
 fn update_physics_or_application_window(
     windows: Res<Windows>,
     mut window_physics: Query<(&Window, &mut RigidBodyPositionComponent), With<Window>>,
@@ -370,7 +378,6 @@ pub fn main() {
             height: 400.,
             ..Default::default()
         })
-        .insert_resource(ClearColor(Color::GRAY))
         .add_plugins(DefaultPlugins)
         .add_plugin(ShapePlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
@@ -385,5 +392,6 @@ pub fn main() {
         .add_system(toggle_physics_on_spacebar)
         .add_system(clicking_freezes_window)
         .add_system(dragging_flings_window)
+        .add_system(window_background_indicates_state)
         .run();
 }
