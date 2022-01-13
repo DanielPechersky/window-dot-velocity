@@ -74,12 +74,12 @@ impl CoordConverter {
 fn setup(
     mut commands: Commands,
     windows: Res<Windows>,
-    bevy_windows: Res<WinitWindows>,
+    winit_windows: Res<WinitWindows>,
     rapier_config: Res<RapierConfiguration>,
 ) {
     let window = windows
         .get_primary()
-        .and_then(|w| bevy_windows.get_window(w.id()))
+        .and_then(|w| winit_windows.get_window(w.id()))
         .unwrap();
     let monitor = window.current_monitor().unwrap();
     let monitor_height: Real = monitor.size().to_logical(monitor.scale_factor()).height;
@@ -252,13 +252,13 @@ fn window_background_indicates_state(mut background: ResMut<ClearColor>, window:
 fn update_physics_or_application_window(
     windows: Res<Windows>,
     mut window_query: Query<(&Window, &mut RigidBodyPositionComponent), With<Window>>,
-    bevy_windows: Res<WinitWindows>,
+    winit_windows: Res<WinitWindows>,
     converter: Res<CoordConverter>,
 ) {
     let (window_state, mut window_physics) = window_query.single_mut();
     let window = windows
         .get_primary()
-        .and_then(|w| bevy_windows.get_window(w.id()))
+        .and_then(|w| winit_windows.get_window(w.id()))
         .unwrap();
 
     let size = window
