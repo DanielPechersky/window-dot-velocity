@@ -336,8 +336,11 @@ fn clicking_freezes_window(
     if mouse_button.just_pressed(MouseButton::Left) {
         let mut window_state = window.single_mut();
         let window = windows.get_primary().unwrap();
-        *window_state =
-            Window::Dragging(converter.from_bevy_winit(window.cursor_position().unwrap()));
+        if let Some(p) = window.cursor_position() {
+            *window_state = Window::Dragging(converter.from_bevy_winit(p));
+        } else {
+            debug!("Failed to get cursor for drag start")
+        }
     }
 }
 
@@ -361,11 +364,13 @@ fn dragging_flings_window(
         let window = windows.get_primary().unwrap();
         if let Window::Dragging(prev) = *window_state {
             *window_state = Window::Bouncing;
-            let curr = converter.from_bevy_winit(window.cursor_position().unwrap());
-
-            let prev = converter.to_physics_point(prev);
-            let curr = converter.to_physics_point(curr);
-            window_velocity.apply_impulse_at_point(&rbmp, (curr - prev) * 2.0, prev);
+            if let Some(curr) = window.cursor_position() {
+                let prev = converter.to_physics_point(prev);
+                let curr = converter.to_physics_point(converter.from_bevy_winit(curr));
+                window_velocity.apply_impulse_at_point(&rbmp, (curr - prev) * 2.0, prev);
+            } else {
+                debug!("Failed to get cursor for drag end")
+            }
         }
     }
 }
