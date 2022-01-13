@@ -1,6 +1,6 @@
 #![windows_subsystem = "windows"]
 
-use bevy::{app::Events, prelude::*};
+use bevy::{prelude::*, window::WindowResized, winit::WinitWindows};
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
 use winit::dpi::{LogicalPosition, LogicalSize};
@@ -74,7 +74,7 @@ impl CoordConverter {
 fn setup(
     mut commands: Commands,
     windows: Res<Windows>,
-    bevy_windows: Res<bevy::winit::WinitWindows>,
+    bevy_windows: Res<WinitWindows>,
     rapier_config: Res<RapierConfiguration>,
 ) {
     let window = windows
@@ -251,11 +251,11 @@ fn window_background_indicates_state(mut background: ResMut<ClearColor>, window:
 
 fn update_physics_or_application_window(
     windows: Res<Windows>,
-    mut window_physics: Query<(&Window, &mut RigidBodyPositionComponent), With<Window>>,
-    bevy_windows: Res<bevy::winit::WinitWindows>,
+    mut window_query: Query<(&Window, &mut RigidBodyPositionComponent), With<Window>>,
+    bevy_windows: Res<WinitWindows>,
     converter: Res<CoordConverter>,
 ) {
-    let (window_state, mut window_physics) = window_physics.single_mut();
+    let (window_state, mut window_physics) = window_query.single_mut();
     let window = windows
         .get_primary()
         .and_then(|w| bevy_windows.get_window(w.id()))
@@ -288,7 +288,6 @@ fn update_physics_or_application_window(
         }
         Window::Dragging(_) => {}
     }
-    // window.request_redraw();
 }
 
 fn window_physics_type_update(
@@ -305,12 +304,12 @@ fn window_physics_type_update(
 
 // this doesn't update Window, also uses internal instead of external coordinates
 fn resize_update(
-    resized_events: Res<Events<bevy::window::WindowResized>>,
-    mut window_physics: Query<&mut ColliderShapeComponent, With<WindowWalls>>,
+    mut resized_events: EventReader<WindowResized>,
+    mut window_query: Query<&mut ColliderShapeComponent, With<WindowWalls>>,
     converter: Res<CoordConverter>,
 ) {
-    let mut window_physics = window_physics.single_mut();
-    for event in resized_events.get_reader().iter(&resized_events) {
+    let mut window_physics = window_query.single_mut();
+    for event in resized_events.iter() {
         let new_dims = converter.to_physics_vec([event.width, event.height].into());
         let new_dims = new_dims / 2.;
         *window_physics = box_collider(new_dims.into()).into();
@@ -344,11 +343,6 @@ fn clicking_freezes_window(
     }
 }
 
-// struct WindowDraggedEvent {
-//     from: Point<Real>,
-//     to: Point<Real>,
-// }
-
 fn dragging_flings_window(
     mouse_button: Res<Input<MouseButton>>,
     mut window: Query<(
@@ -375,6 +369,25 @@ fn dragging_flings_window(
     }
 }
 
+struct WindowPhysicsPlugin;
+
+impl Plugin for WindowPhysicsPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(RapierConfiguration {
+            scale: 1500.,
+            ..Default::default()
+        })
+        .add_startup_system(setup)
+        .add_system(update_physics_or_application_window)
+        .add_system(resize_update)
+        .add_system(window_physics_type_update)
+        .add_system(toggle_physics_on_spacebar)
+        .add_system(clicking_freezes_window)
+        .add_system(dragging_flings_window)
+        .add_system(window_background_indicates_state);
+    }
+}
+
 pub fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
@@ -386,17 +399,6 @@ pub fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(ShapePlugin)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .insert_resource(RapierConfiguration {
-            scale: 1500.,
-            ..Default::default()
-        })
-        .add_startup_system(setup)
-        .add_system(update_physics_or_application_window)
-        .add_system(resize_update)
-        .add_system(window_physics_type_update)
-        .add_system(toggle_physics_on_spacebar)
-        .add_system(clicking_freezes_window)
-        .add_system(dragging_flings_window)
-        .add_system(window_background_indicates_state)
+        .add_plugin(WindowPhysicsPlugin)
         .run();
 }
