@@ -87,43 +87,42 @@ fn setup(
     let converter = CoordConverter { monitor_height };
     commands.insert_resource(converter);
 
-    let camera = commands
-        .spawn_empty()
-        .insert(Camera2dBundle::default())
-        .id();
+    let camera = commands.spawn(Camera2dBundle::default()).id();
 
     // window
     let walls = commands
-        .spawn_empty()
-        .insert(box_collider({
-            let size = window
-                .inner_size()
-                .to_logical::<Real>(window.scale_factor());
-            converter.to_physics_vec(size).into()
-        }))
-        .insert(Friction::new(0.8))
-        .insert(Restitution::new(0.3))
-        .insert(CollisionGroups::new(u32::MAX ^ WINDOW_INNER, u32::MAX))
-        .insert(WindowWalls)
+        .spawn((
+            box_collider({
+                let size = window
+                    .inner_size()
+                    .to_logical::<Real>(window.scale_factor());
+                converter.to_physics_vec(size).into()
+            }),
+            Friction::new(0.8),
+            Restitution::new(0.3),
+            CollisionGroups::new(u32::MAX ^ WINDOW_INNER, u32::MAX),
+            WindowWalls,
+        ))
         .id();
 
     commands
-        .spawn_empty()
-        .insert(RigidBody::KinematicPositionBased)
-        .insert(LockedAxes::ROTATION_LOCKED)
-        .insert({
-            let size = window
-                .outer_size()
-                .to_logical::<Real>(window.scale_factor());
-            let halfbounds = converter.to_physics_vec(size) / 2.;
-            Collider::cuboid(halfbounds[0], halfbounds[1])
-        })
-        .insert(TransformBundle::default())
-        .insert(ExternalImpulse::default())
-        .insert(Friction::new(0.8))
-        .insert(Restitution::new(0.3))
-        .insert(CollisionGroups::new(u32::MAX, WINDOW_INNER))
-        .insert(WindowState::default())
+        .spawn((
+            RigidBody::KinematicPositionBased,
+            LockedAxes::ROTATION_LOCKED,
+            {
+                let size = window
+                    .outer_size()
+                    .to_logical::<Real>(window.scale_factor());
+                let halfbounds = converter.to_physics_vec(size) / 2.;
+                Collider::cuboid(halfbounds[0], halfbounds[1])
+            },
+            TransformBundle::default(),
+            ExternalImpulse::default(),
+            Friction::new(0.8),
+            Restitution::new(0.3),
+            CollisionGroups::new(u32::MAX, WINDOW_INNER),
+            WindowState::default(),
+        ))
         .add_child(walls)
         .add_child(camera);
 
@@ -131,15 +130,13 @@ fn setup(
     let monitor_size = monitor.size().to_logical::<Real>(monitor.scale_factor());
     let monitor_size = converter.to_physics_vec(monitor_size);
 
-    commands
-        .spawn_empty()
-        .insert(box_collider((monitor_size / 2.).into()))
-        .insert(TransformBundle::from(Transform::from_translation(
-            (monitor_size / 2.).extend(0.),
-        )))
-        .insert(Friction::new(0.8))
-        .insert(Restitution::new(0.3))
-        .insert(CollisionGroups::new(u32::MAX, WINDOW_INNER));
+    commands.spawn((
+        box_collider((monitor_size / 2.).into()),
+        TransformBundle::from(Transform::from_translation((monitor_size / 2.).extend(0.))),
+        Friction::new(0.8),
+        Restitution::new(0.3),
+        CollisionGroups::new(u32::MAX, WINDOW_INNER),
+    ));
 
     for _ in 0..10 {
         use rand::seq::SliceRandom;
@@ -194,15 +191,15 @@ fn setup(
             }
         };
 
-        commands
-            .spawn_empty()
-            .insert(gbundle)
-            .insert(RigidBody::default())
-            .insert(cshape)
-            .insert(TransformBundle::default())
-            .insert(Friction::new(0.3))
-            .insert(Restitution::new(0.5))
-            .insert(CollisionGroups::new(u32::MAX ^ WINDOW_INNER, u32::MAX));
+        commands.spawn((
+            gbundle,
+            RigidBody::default(),
+            cshape,
+            TransformBundle::default(),
+            Friction::new(0.3),
+            Restitution::new(0.5),
+            CollisionGroups::new(u32::MAX ^ WINDOW_INNER, u32::MAX),
+        ));
     }
 }
 
