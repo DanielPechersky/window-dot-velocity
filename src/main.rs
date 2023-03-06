@@ -346,13 +346,14 @@ impl Plugin for WindowPhysicsPlugin {
 
 pub fn main() {
     App::new()
-        // .insert_resource(WindowDescriptor {
-        //     title: "window.velocity".to_string(),
-        //     width: 600.,
-        //     height: 400.,
-        //     ..Default::default()
-        // })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "window.velocity".into(),
+                resolution: (600., 400.).into(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }))
         .add_plugin(WindowPhysicsPlugin)
         .run();
 }
