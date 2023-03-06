@@ -24,13 +24,13 @@ fn box_collider([hx, hy]: [Real; 2]) -> Collider {
 const WINDOW_INNER: u32 = 1;
 
 #[derive(Component, Clone, Copy)]
-enum Window {
+enum WindowState {
     Bouncing,
     Dragging(LogicalPosition<Real>),
     Static,
 }
 
-impl Default for Window {
+impl Default for WindowState {
     fn default() -> Self {
         Self::Static
     }
@@ -39,7 +39,7 @@ impl Default for Window {
 #[derive(Component)]
 struct WindowWalls;
 
-#[derive(Clone, Copy)]
+#[derive(Resource, Clone, Copy)]
 struct CoordConverter {
     monitor_height: Real, // in logical units
                           // physics_scale: Real,
@@ -73,27 +73,28 @@ impl CoordConverter {
     }
 }
 
-fn setup(mut commands: Commands, windows: Res<Windows>, winit_windows: NonSend<WinitWindows>) {
-    let window = windows
-        .get_primary()
-        .and_then(|w| winit_windows.get_window(w.id()))
-        .unwrap();
+fn setup(
+    mut commands: Commands,
+    window: Query<Entity, With<Window>>,
+    winit_windows: NonSend<WinitWindows>,
+) {
+    let window = window.get_single().unwrap();
+    let window = winit_windows.get_window(window).unwrap();
+
     let monitor = window.current_monitor().unwrap();
     let monitor_height = monitor.size().to_logical(monitor.scale_factor()).height;
 
-    let converter = CoordConverter {
-        monitor_height: monitor_height,
-    };
+    let converter = CoordConverter { monitor_height };
     commands.insert_resource(converter);
 
     let camera = commands
-        .spawn()
-        .insert_bundle(OrthographicCameraBundle::new_2d())
+        .spawn_empty()
+        .insert(Camera2dBundle::default())
         .id();
 
     // window
     let walls = commands
-        .spawn()
+        .spawn_empty()
         .insert(box_collider({
             let size = window
                 .inner_size()
@@ -107,7 +108,7 @@ fn setup(mut commands: Commands, windows: Res<Windows>, winit_windows: NonSend<W
         .id();
 
     commands
-        .spawn()
+        .spawn_empty()
         .insert(RigidBody::KinematicPositionBased)
         .insert(LockedAxes::ROTATION_LOCKED)
         .insert({
@@ -117,12 +118,12 @@ fn setup(mut commands: Commands, windows: Res<Windows>, winit_windows: NonSend<W
             let halfbounds = converter.to_physics_vec(size) / 2.;
             Collider::cuboid(halfbounds[0], halfbounds[1])
         })
-        .insert_bundle(TransformBundle::default())
+        .insert(TransformBundle::default())
         .insert(ExternalImpulse::default())
         .insert(Friction::new(0.8))
         .insert(Restitution::new(0.3))
         .insert(CollisionGroups::new(u32::MAX, WINDOW_INNER))
-        .insert(Window::default())
+        .insert(WindowState::default())
         .add_child(walls)
         .add_child(camera);
 
@@ -131,9 +132,9 @@ fn setup(mut commands: Commands, windows: Res<Windows>, winit_windows: NonSend<W
     let monitor_size = converter.to_physics_vec(monitor_size);
 
     commands
-        .spawn()
+        .spawn_empty()
         .insert(box_collider((monitor_size / 2.).into()))
-        .insert_bundle(TransformBundle::from(Transform::from_translation(
+        .insert(TransformBundle::from(Transform::from_translation(
             (monitor_size / 2.).extend(0.),
         )))
         .insert(Friction::new(0.8))
@@ -194,36 +195,37 @@ fn setup(mut commands: Commands, windows: Res<Windows>, winit_windows: NonSend<W
         };
 
         commands
-            .spawn()
-            .insert_bundle(gbundle)
+            .spawn_empty()
+            .insert(gbundle)
             .insert(RigidBody::default())
             .insert(cshape)
-            .insert_bundle(TransformBundle::default())
+            .insert(TransformBundle::default())
             .insert(Friction::new(0.3))
             .insert(Restitution::new(0.5))
             .insert(CollisionGroups::new(u32::MAX ^ WINDOW_INNER, u32::MAX));
     }
 }
 
-fn window_background_indicates_state(mut background: ResMut<ClearColor>, window: Query<&Window>) {
+fn window_background_indicates_state(
+    mut background: ResMut<ClearColor>,
+    window: Query<&WindowState>,
+) {
     *background = match window.single() {
-        Window::Bouncing => ClearColor(Color::NAVY),
-        Window::Dragging(_) => ClearColor(Color::DARK_GRAY),
-        Window::Static => ClearColor(Color::GRAY),
+        WindowState::Bouncing => ClearColor(Color::NAVY),
+        WindowState::Dragging(_) => ClearColor(Color::DARK_GRAY),
+        WindowState::Static => ClearColor(Color::GRAY),
     }
 }
 
 fn update_physics_or_application_window(
-    windows: Res<Windows>,
-    mut window_query: Query<(&Window, &mut Transform)>,
+    window: Query<Entity, With<Window>>,
+    mut window_query: Query<(&WindowState, &mut Transform)>,
     winit_windows: NonSend<WinitWindows>,
     converter: Res<CoordConverter>,
 ) {
     let (window_state, mut window_physics) = window_query.single_mut();
-    let window = windows
-        .get_primary()
-        .and_then(|w| winit_windows.get_window(w.id()))
-        .unwrap();
+    let window = window.get_single().unwrap();
+    let window = winit_windows.get_window(window).unwrap();
 
     let size = window
         .outer_size()
@@ -232,14 +234,14 @@ fn update_physics_or_application_window(
     let offset = Vect::new(size[0], -size[1]) / 2.;
 
     match window_state {
-        Window::Bouncing => {
+        WindowState::Bouncing => {
             let center: Vect = window_physics.translation.truncate();
 
             let top_left = center - offset;
 
             window.set_outer_position(converter.to_logical_winit_position(top_left));
         }
-        Window::Static => {
+        WindowState::Static => {
             let top_left = window
                 .inner_position()
                 .unwrap()
@@ -250,15 +252,17 @@ fn update_physics_or_application_window(
 
             window_physics.translation = center.extend(0.);
         }
-        Window::Dragging(_) => {}
+        WindowState::Dragging(_) => {}
     }
 }
 
-fn window_physics_type_update(mut window_query: Query<(&Window, &mut RigidBody), Changed<Window>>) {
+fn window_physics_type_update(
+    mut window_query: Query<(&WindowState, &mut RigidBody), Changed<WindowState>>,
+) {
     if let Ok((window, mut rbtype)) = window_query.get_single_mut() {
         *rbtype = match window {
-            Window::Bouncing => RigidBody::Dynamic,
-            Window::Static | Window::Dragging(_) => RigidBody::KinematicPositionBased,
+            WindowState::Bouncing => RigidBody::Dynamic,
+            WindowState::Static | WindowState::Dragging(_) => RigidBody::KinematicPositionBased,
         }
     }
 }
@@ -277,27 +281,27 @@ fn resize_update(
     }
 }
 
-fn toggle_physics_on_spacebar(keys: Res<Input<KeyCode>>, mut window: Query<&mut Window>) {
+fn toggle_physics_on_spacebar(keys: Res<Input<KeyCode>>, mut window: Query<&mut WindowState>) {
     if keys.just_pressed(KeyCode::Space) {
         let mut window = window.single_mut();
         *window = match *window {
-            Window::Static | Window::Dragging(_) => Window::Bouncing,
-            Window::Bouncing => Window::Static,
+            WindowState::Static | WindowState::Dragging(_) => WindowState::Bouncing,
+            WindowState::Bouncing => WindowState::Static,
         }
     }
 }
 
 fn clicking_freezes_window(
     mouse_button: Res<Input<MouseButton>>,
-    mut window: Query<&mut Window>,
-    windows: Res<Windows>,
+    mut window: Query<&mut WindowState>,
+    windows: Query<&Window>,
     converter: Res<CoordConverter>,
 ) {
     if mouse_button.just_pressed(MouseButton::Left) {
         let mut window_state = window.single_mut();
-        let window = windows.get_primary().unwrap();
+        let window = windows.get_single().unwrap();
         if let Some(p) = window.cursor_position() {
-            *window_state = Window::Dragging(converter.from_bevy_winit(p));
+            *window_state = WindowState::Dragging(converter.from_bevy_winit(p));
         } else {
             debug!("Failed to get cursor for drag start")
         }
@@ -306,15 +310,15 @@ fn clicking_freezes_window(
 
 fn dragging_flings_window(
     mouse_button: Res<Input<MouseButton>>,
-    mut window: Query<(&mut Window, &mut ExternalImpulse)>,
-    windows: Res<Windows>,
+    mut window_state: Query<(&mut WindowState, &mut ExternalImpulse)>,
+    window: Query<&Window>,
     converter: Res<CoordConverter>,
 ) {
     if mouse_button.just_released(MouseButton::Left) {
-        let (mut window_state, mut impulse) = window.single_mut();
-        let window = windows.get_primary().unwrap();
-        if let Window::Dragging(prev) = *window_state {
-            *window_state = Window::Bouncing;
+        let (mut window_state, mut impulse) = window_state.single_mut();
+        let window = window.get_single().unwrap();
+        if let WindowState::Dragging(prev) = *window_state {
+            *window_state = WindowState::Bouncing;
             if let Some(curr) = window.cursor_position() {
                 let prev = converter.to_physics_point(prev);
                 let curr = converter.to_physics_point(converter.from_bevy_winit(curr));
@@ -345,12 +349,12 @@ impl Plugin for WindowPhysicsPlugin {
 
 pub fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            title: "window.velocity".to_string(),
-            width: 600.,
-            height: 400.,
-            ..Default::default()
-        })
+        // .insert_resource(WindowDescriptor {
+        //     title: "window.velocity".to_string(),
+        //     width: 600.,
+        //     height: 400.,
+        //     ..Default::default()
+        // })
         .add_plugins(DefaultPlugins)
         .add_plugin(WindowPhysicsPlugin)
         .run();
