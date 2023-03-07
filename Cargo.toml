@@ -7,7 +7,7 @@ version = "0.1.0"
 
 [dependencies]
 bevy = "0.10"
-bevy_prototype_lyon = "0.7"
-bevy_rapier2d = "0.20"
+bevy_prototype_lyon = "0.8"
+bevy_rapier2d = "0.21"
 rand = "0.8"
 winit = "0.28"

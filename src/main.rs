@@ -21,7 +21,7 @@ fn box_collider([hx, hy]: [Real; 2]) -> Collider {
     )
 }
 
-const WINDOW_INNER: u32 = 1;
+const WINDOW_INNER: Group = Group::GROUP_1;
 
 #[derive(Component, Clone, Copy)]
 enum WindowState {
@@ -100,7 +100,7 @@ fn setup(
             }),
             Friction::new(0.8),
             Restitution::new(0.3),
-            CollisionGroups::new(u32::MAX ^ WINDOW_INNER, u32::MAX),
+            CollisionGroups::new(Group::ALL ^ WINDOW_INNER, Group::ALL),
             WindowWalls,
         ))
         .id();
@@ -120,7 +120,7 @@ fn setup(
             ExternalImpulse::default(),
             Friction::new(0.8),
             Restitution::new(0.3),
-            CollisionGroups::new(u32::MAX, WINDOW_INNER),
+            CollisionGroups::new(Group::ALL, WINDOW_INNER),
             WindowState::default(),
         ))
         .add_child(walls)
@@ -135,7 +135,7 @@ fn setup(
         TransformBundle::from(Transform::from_translation((monitor_size / 2.).extend(0.))),
         Friction::new(0.8),
         Restitution::new(0.3),
-        CollisionGroups::new(u32::MAX, WINDOW_INNER),
+        CollisionGroups::new(Group::ALL, WINDOW_INNER),
     ));
 
     for _ in 0..10 {
