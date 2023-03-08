@@ -100,7 +100,7 @@ fn setup(
             }),
             Friction::new(0.8),
             Restitution::new(0.3),
-            CollisionGroups::new(Group::ALL ^ WINDOW_INNER, Group::ALL),
+            CollisionGroups::new(!WINDOW_INNER, Group::ALL),
             WindowWalls,
         ))
         .id();
@@ -198,7 +198,7 @@ fn setup(
             TransformBundle::default(),
             Friction::new(0.3),
             Restitution::new(0.5),
-            CollisionGroups::new(u32::MAX ^ WINDOW_INNER, u32::MAX),
+            CollisionGroups::new(!WINDOW_INNER, Group::ALL),
         ));
     }
 }
