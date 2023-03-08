@@ -155,47 +155,42 @@ fn setup(
             Square,
         }
 
-        let mode = blyon::draw::DrawMode::Fill(blyon::draw::FillMode::color(
-            *COLOURS
-                .choose(&mut rand::thread_rng())
-                .expect("COLOURS is not empty"),
-        ));
-
-        let (gbundle, cshape) = {
+        let (path, cshape) = {
             match [Choice::Circle, Choice::Square]
                 .choose(&mut rand::thread_rng())
                 .unwrap()
             {
                 Choice::Circle => (
-                    blyon::geometry::GeometryBuilder::build_as(
-                        &blyon::shapes::Circle {
-                            radius: size * PIXELS_PER_METER,
-                            ..Default::default()
-                        },
-                        mode,
-                        Transform::default(),
-                    ),
+                    blyon::geometry::GeometryBuilder::build_as(&blyon::shapes::Circle {
+                        radius: size * PIXELS_PER_METER,
+                        ..Default::default()
+                    }),
                     Collider::ball(size),
                 ),
                 Choice::Square => (
-                    blyon::geometry::GeometryBuilder::build_as(
-                        &blyon::shapes::Rectangle {
-                            extents: Vec2::from([size, size]) * PIXELS_PER_METER,
-                            origin: blyon::shapes::RectangleOrigin::Center,
-                        },
-                        mode,
-                        Transform::default(),
-                    ),
+                    blyon::geometry::GeometryBuilder::build_as(&blyon::shapes::Rectangle {
+                        extents: Vec2::from([size, size]) * PIXELS_PER_METER,
+                        origin: blyon::shapes::RectangleOrigin::Center,
+                    }),
                     Collider::cuboid(size / 2.0, size / 2.0),
                 ),
             }
         };
 
+        let fill = blyon::draw::Fill::color(
+            *COLOURS
+                .choose(&mut rand::thread_rng())
+                .expect("COLOURS is not empty"),
+        );
+
         commands.spawn((
-            gbundle,
+            blyon::entity::ShapeBundle {
+                path,
+                ..Default::default()
+            },
             RigidBody::default(),
             cshape,
-            TransformBundle::default(),
+            fill,
             Friction::new(0.3),
             Restitution::new(0.5),
             CollisionGroups::new(!WINDOW_INNER, Group::ALL),
