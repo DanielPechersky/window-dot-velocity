@@ -8,6 +8,6 @@ version = "0.1.0"
 [dependencies]
 bevy = "0.10"
 bevy_prototype_lyon = "0.8"
-bevy_rapier2d = "0.21"
+bevy_rapier2d = {version="0.21", features=["debug-render-2d"]}
 rand = "0.8"
 winit = "0.28"

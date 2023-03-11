@@ -5,7 +5,7 @@ use bevy_prototype_lyon as blyon;
 use bevy_rapier2d::prelude::*;
 use winit::dpi::{LogicalPosition, LogicalSize};
 
-const PIXELS_PER_METER: f32 = 1500.0;
+const PIXELS_PER_METER: f32 = 1500.0 / 2.;
 
 fn box_collider([hx, hy]: [Real; 2]) -> Collider {
     Collider::compound(
@@ -20,8 +20,6 @@ fn box_collider([hx, hy]: [Real; 2]) -> Collider {
             .into(),
     )
 }
-
-const WINDOW_INNER: Group = Group::GROUP_1;
 
 #[derive(Component, Clone, Copy)]
 enum WindowState {
@@ -57,7 +55,7 @@ impl CoordConverter {
     }
 
     fn to_physics_vec(&self, p: LogicalSize<Real>) -> Vect {
-        Vect::from(<[_; 2]>::from(p)) / PIXELS_PER_METER
+        Vect::from(<[_; 2]>::from(p))
     }
 
     fn to_logical_winit_position(&self, v: Vect) -> LogicalPosition<Real> {
@@ -65,7 +63,7 @@ impl CoordConverter {
     }
 
     fn to_logical_size(&self, v: Vect) -> LogicalSize<Real> {
-        <[_; 2]>::from(v * PIXELS_PER_METER).into()
+        <[_; 2]>::from(v).into()
     }
 
     fn from_bevy_winit(&self, v: Vect) -> LogicalPosition<Real> {
@@ -78,6 +76,8 @@ fn setup(
     window: Query<Entity, With<Window>>,
     winit_windows: NonSend<WinitWindows>,
 ) {
+    const WINDOW_INNER: Group = Group::GROUP_1;
+
     let window = window.get_single().unwrap();
     let window = winit_windows.get_window(window).unwrap();
 
@@ -96,7 +96,8 @@ fn setup(
                 let size = window
                     .inner_size()
                     .to_logical::<Real>(window.scale_factor());
-                converter.to_physics_vec(size).into()
+                let size = converter.to_physics_vec(size) / 2.;
+                size.into()
             }),
             Friction::new(0.8),
             Restitution::new(0.3),
@@ -149,6 +150,7 @@ fn setup(
         ];
 
         let size = rand::random::<Real>() * 0.03 + 0.01;
+        let size = size * PIXELS_PER_METER;
 
         enum Choice {
             Circle,
@@ -162,14 +164,14 @@ fn setup(
             {
                 Choice::Circle => (
                     blyon::geometry::GeometryBuilder::build_as(&blyon::shapes::Circle {
-                        radius: size * PIXELS_PER_METER,
+                        radius: size,
                         ..Default::default()
                     }),
                     Collider::ball(size),
                 ),
                 Choice::Square => (
                     blyon::geometry::GeometryBuilder::build_as(&blyon::shapes::Rectangle {
-                        extents: Vec2::from([size, size]) * PIXELS_PER_METER,
+                        extents: Vec2::from([size, size]),
                         origin: blyon::shapes::RectangleOrigin::Center,
                     }),
                     Collider::cuboid(size / 2.0, size / 2.0),
@@ -196,6 +198,12 @@ fn setup(
             CollisionGroups::new(!WINDOW_INNER, Group::ALL),
         ));
     }
+}
+
+fn debug(shapes: Query<&Transform, With<blyon::prelude::Path>>) {
+    // shapes.for_each(|s| {
+    //     dbg!(s.translation);
+    // });
 }
 
 fn window_background_indicates_state(
@@ -265,12 +273,12 @@ fn resize_update(
     mut window_query: Query<&mut Collider, With<WindowWalls>>,
     converter: Res<CoordConverter>,
 ) {
-    let mut window_collider = window_query.single_mut();
-    for event in resized_events.iter() {
-        let new_dims = converter.to_physics_vec([event.width, event.height].into());
-        let new_dims = new_dims / 2.;
-        *window_collider = box_collider(new_dims.into()).into();
-    }
+    // let mut window_collider = window_query.single_mut();
+    // for event in resized_events.iter() {
+    //     let new_dims = converter.to_physics_vec([event.width, event.height].into());
+    //     let new_dims = new_dims / 2.;
+    //     *window_collider = box_collider(new_dims.into()).into();
+    // }
 }
 
 fn toggle_physics_on_spacebar(keys: Res<Input<KeyCode>>, mut window: Query<&mut WindowState>) {
@@ -314,7 +322,7 @@ fn dragging_flings_window(
             if let Some(curr) = window.cursor_position() {
                 let prev = converter.to_physics_point(prev);
                 let curr = converter.to_physics_point(converter.from_bevy_winit(curr));
-                impulse.impulse = (curr - prev) * 2.0;
+                impulse.impulse = dbg!((curr - prev) * 2.0 * PIXELS_PER_METER.powi(3));
             } else {
                 debug!("Failed to get cursor for drag end")
             }
@@ -326,16 +334,19 @@ struct WindowPhysicsPlugin;
 
 impl Plugin for WindowPhysicsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-            .add_plugin(blyon::plugin::ShapePlugin)
-            .add_startup_system(setup)
-            .add_system(update_physics_or_application_window)
-            .add_system(resize_update)
-            .add_system(window_physics_type_update)
-            .add_system(toggle_physics_on_spacebar)
-            .add_system(clicking_freezes_window)
-            .add_system(dragging_flings_window)
-            .add_system(window_background_indicates_state);
+        app.add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(
+            PIXELS_PER_METER,
+        ))
+        // .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(blyon::plugin::ShapePlugin)
+        .add_startup_system(setup)
+        .add_system(update_physics_or_application_window)
+        .add_system(resize_update)
+        .add_system(window_physics_type_update)
+        .add_system(toggle_physics_on_spacebar)
+        .add_system(clicking_freezes_window)
+        .add_system(dragging_flings_window)
+        .add_system(window_background_indicates_state);
     }
 }
 
@@ -349,6 +360,8 @@ pub fn main() {
             }),
             ..Default::default()
         }))
+        .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(WindowPhysicsPlugin)
+        .add_system(debug)
         .run();
 }
