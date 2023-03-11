@@ -287,13 +287,13 @@ fn toggle_physics_on_spacebar(keys: Res<Input<KeyCode>>, mut window: Query<&mut 
 
 fn clicking_freezes_window(
     mouse_button: Res<Input<MouseButton>>,
-    mut window: Query<&mut WindowState>,
-    windows: Query<&Window>,
+    mut window_state: Query<&mut WindowState>,
+    window: Query<&Window>,
     converter: Res<CoordConverter>,
 ) {
     if mouse_button.just_pressed(MouseButton::Left) {
-        let mut window_state = window.single_mut();
-        let window = windows.single();
+        let mut window_state = window_state.single_mut();
+        let window = window.single();
         if let Some(p) = window.cursor_position() {
             *window_state = WindowState::Dragging(converter.from_bevy_winit(p));
         } else {
