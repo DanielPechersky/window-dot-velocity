@@ -224,7 +224,7 @@ fn update_physics_or_application_window(
     converter: Res<CoordConverter>,
 ) {
     let (window_state, mut window_physics) = window_query.single_mut();
-    let window = window.get_single().unwrap();
+    let window = window.single();
     let window = winit_windows.get_window(window).unwrap();
 
     let size = window
