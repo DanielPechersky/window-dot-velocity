@@ -23,10 +23,10 @@ fn box_collider([hx, hy]: [Real; 2]) -> Collider {
 
 #[derive(Default, Component, Clone, Copy)]
 enum WindowState {
-    Bouncing,
-    Dragging(LogicalPosition<Real>),
     #[default]
     Static,
+    Bouncing,
+    Dragging(LogicalPosition<Real>),
 }
 
 #[derive(Component)]
