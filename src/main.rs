@@ -73,7 +73,7 @@ fn setup(
 ) {
     const WINDOW_INNER: Group = Group::GROUP_1;
 
-    let window = window.get_single().unwrap();
+    let window = window.single();
     let window = winit_windows.get_window(window).unwrap();
 
     let monitor = window.current_monitor().unwrap();
@@ -254,11 +254,10 @@ fn update_physics_or_application_window(
 fn window_physics_type_update(
     mut window_query: Query<(&WindowState, &mut RigidBody), Changed<WindowState>>,
 ) {
-    if let Ok((window, mut rbtype)) = window_query.get_single_mut() {
-        *rbtype = match window {
-            WindowState::Bouncing => RigidBody::Dynamic,
-            WindowState::Static | WindowState::Dragging(_) => RigidBody::KinematicPositionBased,
-        }
+    let (window, mut rbtype) = window_query.single_mut();
+    *rbtype = match window {
+        WindowState::Bouncing => RigidBody::Dynamic,
+        WindowState::Static | WindowState::Dragging(_) => RigidBody::KinematicPositionBased,
     }
 }
 
@@ -294,7 +293,7 @@ fn clicking_freezes_window(
 ) {
     if mouse_button.just_pressed(MouseButton::Left) {
         let mut window_state = window.single_mut();
-        let window = windows.get_single().unwrap();
+        let window = windows.single();
         if let Some(p) = window.cursor_position() {
             *window_state = WindowState::Dragging(converter.from_bevy_winit(p));
         } else {
@@ -311,7 +310,7 @@ fn dragging_flings_window(
 ) {
     if mouse_button.just_released(MouseButton::Left) {
         let (mut window_state, mut impulse) = window_state.single_mut();
-        let window = window.get_single().unwrap();
+        let window = window.single();
         if let WindowState::Dragging(prev) = *window_state {
             *window_state = WindowState::Bouncing;
             if let Some(curr) = window.cursor_position() {
