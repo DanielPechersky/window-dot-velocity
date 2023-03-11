@@ -254,7 +254,7 @@ fn update_physics_or_application_window(
 fn window_physics_type_update(
     mut window_query: Query<(&WindowState, &mut RigidBody), Changed<WindowState>>,
 ) {
-    let (window, mut rbtype) = window_query.single_mut();
+    let Ok((window, mut rbtype)) = window_query.get_single_mut() else { return };
     *rbtype = match window {
         WindowState::Bouncing => RigidBody::Dynamic,
         WindowState::Static | WindowState::Dragging(_) => RigidBody::KinematicPositionBased,
