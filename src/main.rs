@@ -5,7 +5,7 @@ use bevy_prototype_lyon as blyon;
 use bevy_rapier2d::prelude::*;
 use winit::dpi::{LogicalPosition, LogicalSize};
 
-const PIXELS_PER_METER: f32 = 1500.0 / 2.;
+const PIXELS_PER_METER: f32 = 1500.0 * 2.;
 
 fn box_collider([hx, hy]: [Real; 2]) -> Collider {
     Collider::compound(
@@ -316,7 +316,7 @@ fn dragging_flings_window(
             if let Some(curr) = window.cursor_position() {
                 let prev = converter.to_physics_point(prev);
                 let curr = converter.to_physics_point(converter.from_bevy_winit(curr));
-                impulse.impulse = dbg!((curr - prev) * 2.0 * PIXELS_PER_METER.powi(3));
+                impulse.impulse = (curr - prev) * 2.0 * PIXELS_PER_METER.powi(3);
             } else {
                 debug!("Failed to get cursor for drag end")
             }
